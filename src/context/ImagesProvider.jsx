@@ -1,20 +1,19 @@
-import React, {useState, useEffect } from "react";
-import Button from './Button/Button'; 
-import ImageGallery from './ImageGallery/ImageGallery';
-import Searchbar from './Searchbar/Searchbar';
-import Loader from './Loader/Loader';
-import css from './App.module.css';
-import { getAPI } from 'pixabay-api';
-import toast, { Toaster } from 'react-hot-toast';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { getAPI } from '../pixabay-api';
+import toast from 'react-hot-toast';
 
-export const App = () => {
+const ImagesContext = createContext();
+
+export const useImagesContext = () => useContext(ImagesContext);
+
+export const ImagesProvider = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [images, setImages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [isEnd, setIsEnd] = useState(false);
- 
+
   useEffect(() => {
     const fetchImages = async () => {
       if (!searchQuery) return;
@@ -25,7 +24,7 @@ export const App = () => {
       try {
         const response = await getAPI(searchQuery, currentPage);
         const { totalHits, hits } = response;
-      
+
         if (hits.length === 0) {
           toast.error('No images found. Try a different search.');
           setIsLoading(false);
@@ -63,41 +62,33 @@ export const App = () => {
       return;
     }
     // Only update the state and fetch images if the new query is different
-    
+
     setSearchQuery(normalizedQuery);
     setCurrentPage(1);
     setImages([]);
     setIsEnd(false);
-    
   };
-  
 
   const handleLoadMore = () => {
     if (!isEnd) {
       setCurrentPage(prevState => prevState + 1);
     } else {
       toast("You've reached the end fo the search results.");
-    };
-  }
-
-
- 
-    return (
-      <div className={css.App}>
-        <Searchbar onSubmit={handleSearchSubmit} />
-        <ImageGallery images={images} />
-        {isLoading && <Loader />}
-        {!isLoading && !isError && images.length > 0 && !isEnd && (
-          <Button onClick={handleLoadMore} />
-        )}
-        {isError && toast.error("Something went wrong. Please try again later.")}
-
-        <Toaster position="top-center" reverseOrder={false} />
-      </div>
-    );
+    }
   };
 
-
-
-
-export default App;
+  return (
+    <ImagesContext.Provider
+      value={{
+        images,
+        isLoading,
+        isError,
+        isEnd,
+        handleSearchSubmit,
+        handleLoadMore,
+      }}
+    >
+      {children}
+    </ImagesContext.Provider>
+  );
+};
